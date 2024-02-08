@@ -1,46 +1,63 @@
 import os
 import glob
 
-def ler_entradas(diretorio):
-    arquivos = glob.glob(os.path.join(diretorio, 'entrada_*.txt'))
-    resultados = []
-    
-    for arquivo in sorted(arquivos):
-        with open(arquivo, 'r') as f:
-            conteudo = f.read()
-            equipamentos = processar_conteudo(conteudo)
-            resultado = alocar(equipamentos)
-            resultados.append((arquivo, resultado))
-    
-    return resultados
+def read_files(directory):
+    file_paths = glob.glob(os.path.join(directory, 'entrada_*.txt'))
+    results = []
+    for file_path in sorted(file_paths):
+        with open(file_path, 'r') as file:
+            content = file.read()
+            equipments, students = parse_content(content)
+            allocation_result = allocate_equipments(equipments, students)
+            results.append((file_path, allocation_result))
+    return results
 
-def processar_conteudo(conteudo):
-    #conversão do conteúdo do arquivo 
-    pass
+def parse_content(content):
+    equipments = {}
+    students_set = set()
+    lines = content.strip().split('\n')
+    for line in lines:
+        equipment_name, students_str = line.split(':')
+        students = students_str.split(';')[:-1]
+        equipments[equipment_name] = {student.split('=')[0]: int(student.split('=')[1]) for student in students}
+        students_set.update(equipments[equipment_name].keys())
+    return equipments, list(students_set)
 
-def alocar(equipamentos):
-    # backtracking
-    pass
+def allocate_equipments(equipments, students):
+    allocations = {equipment: [None] * 12 for equipment in equipments}
+    student_times = {student: 0 for student in students}
+    for interval in range(12):
+        for equipment in equipments:
+            for student, times_needed in equipments[equipment].items():
+                if times_needed > 0 and student_times[student] <= interval:
+                    allocations[equipment][interval] = student
+                    equipments[equipment][student] -= 1
+                    student_times[student] += 1
+                    break
+    return allocations
 
-def salvar_saida(arquivo_saida, resultado):
-    with open(arquivo_saida, 'w') as f:
-        for equipamento, alunos in resultado.items():
-            f.write(f"{equipamento}:")
-            for aluno in alunos:
-                f.write(f"-{aluno} ")
-            f.write("\n")
+def save_output(output_directory, file_path, result):
+    output_file_name = os.path.basename(file_path).replace('entrada', 'saida')
+    output_file_path = os.path.join(output_directory, output_file_name)
+    with open(output_file_path, 'w') as file:
+        for equipment, slots in result.items():
+            file.write(f"{equipment}:")
+            for student in slots:
+                if student:
+                    file.write(f"-{student} ")
+            file.write("\n")
 
-diretorio_entradas = '../entrada_50'
+def main():
+    input_directory = '../entrada_50'
+    output_directory = 'saida'
+    os.makedirs(output_directory, exist_ok=True)
 
-diretorio_saidas = 'saida/'
+    results = read_files(input_directory)
+    for file_path, result in results:
+        if result:
+            save_output(output_directory, file_path, result)
+        else:
+            print(f'Allocation failed for {file_path}')
 
-os.makedirs(diretorio_saidas, exist_ok=True)
-
-resultados = ler_entradas(diretorio_entradas)
-for arquivo, resultado in resultados:
-    nome_arquivo_saida = os.path.basename(arquivo).replace('entrada', 'saida')
-    arquivo_saida = os.path.join(diretorio_saidas, nome_arquivo_saida)
-    if resultado:
-        salvar_saida(arquivo_saida, resultado)
-    else:
-        print(f'Não foi possível realizar a alocação para {arquivo}')
+if __name__ == "__main__":
+    main()
