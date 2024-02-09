@@ -23,18 +23,36 @@ def parse_content(content):
         students_set.update(equipments[equipment_name].keys())
     return equipments, list(students_set)
 
+
 def allocate_equipments(equipments, students):
     allocations = {equipment: [None] * 12 for equipment in equipments}
-    student_times = {student: 0 for student in students}
-    for interval in range(12):
-        for equipment in equipments:
-            for student, times_needed in equipments[equipment].items():
-                if times_needed > 0 and student_times[student] <= interval:
-                    allocations[equipment][interval] = student
-                    equipments[equipment][student] -= 1
-                    student_times[student] += 1
-                    break
-    return allocations
+    student_intervals = {student: set() for student in students}
+
+    def backtrack(equip_index, interval):
+        if interval == 12:
+            return True if equip_index >= len(equipments) - 1 else backtrack(equip_index + 1, 0)
+        
+        equipment = list(equipments)[equip_index]
+        for student, need in equipments[equipment].items():
+            if need > 0 and interval not in student_intervals[student]:
+                equipments[equipment][student] -= 1
+                allocations[equipment][interval] = student
+                student_intervals[student].add(interval)
+
+                if backtrack(equip_index, interval + 1):
+                    return True
+
+                equipments[equipment][student] += 1
+                allocations[equipment][interval] = None
+                student_intervals[student].remove(interval)
+        
+        return False if interval == 0 else backtrack(equip_index, interval + 1)
+
+    if backtrack(0, 0):
+        return allocations
+    else:
+        return False
+
 
 def save_output(output_directory, file_path, result):
     output_file_name = os.path.basename(file_path).replace('entrada', 'saida')
