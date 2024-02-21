@@ -17,33 +17,25 @@ def read_input(file_path):
     return equipment_usage
 
 def backtracking_schedule(usage, schedules, current_slot=0, user_slots={}, equipment_index=0):
-    # Se todos os equipamentos têm 12 alocações, a solução é válida
     if all(len(schedules[equip]) == 12 for equip in schedules):
         return True
 
-    # Se o índice do equipamento excede o número de equipamentos, falha
     if equipment_index >= len(usage):
         return False
 
     equipment = list(usage.keys())[equipment_index]
     for user, freq in usage[equipment]:
-        # Tentativa de alocação em cada slot de tempo
         for time_slot in range(12):
-            # Condição para verificar se o aluno já está alocado em outro equipamento no mesmo slot
             if freq > 0 and all(time_slot not in slots for slots in user_slots.values()):
-                # Alocação
                 schedules[equipment].append((time_slot, user))
                 user_slots.setdefault(user, []).append(time_slot)
 
-                # Tentativa de continuar o backtracking com a próxima alocação
                 if backtracking_schedule(usage, schedules, current_slot + 1, user_slots, equipment_index):
                     return True
                 
-                # Desfaz a alocação se não levar a uma solução válida
                 schedules[equipment].pop()
                 user_slots[user].remove(time_slot)
 
-    # Tentativa com o próximo equipamento se o atual falhar em satisfazer as condições
     if backtracking_schedule(usage, schedules, current_slot, user_slots, equipment_index + 1):
         return True
 
