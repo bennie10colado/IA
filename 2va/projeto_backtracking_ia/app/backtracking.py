@@ -2,7 +2,8 @@ import os
 from collections import defaultdict
 
 def processar_entrada(entrada):
-    # divide a entrada por linhas e itera sobre cada linha para extrair os dados de cada equipamento e os alunos com suas respectivas frequências
+    # divide a entrada por linhas e itera sobre cada linha para extrair os dados de 
+    # cada equipamento e os alunos com suas respectivas frequências
     linhas = entrada.strip().split('\n')
     dados = {}
     for linha in linhas:
@@ -41,6 +42,8 @@ def alocar_tempo(dados):
         # verifica se o aluno pode ser alocado no horário especificado de acordo com as restrições
         equipamento_atual = list(dados)[equipamento]
         if aluno not in dados[equipamento_atual] or alocacoes[equipamento_atual][aluno] >= dados[equipamento_atual][aluno]:
+            #print("alocacoes: ", alocacoes)
+            #print(alocacoes[equipamento_atual][aluno])
             return False
         for eq, horarios_eq in horarios_alocados.items():
             if horarios_eq[horario] == aluno:
@@ -51,6 +54,7 @@ def alocar_tempo(dados):
         # aloca o aluno no horário especificado e atualiza o contador de alocações
         equipamento_atual = list(dados)[equipamento]
         horarios_alocados[equipamento_atual][horario] = aluno
+        #print("HORARIOS ALOCADOS: ", horarios_alocados)
         alocacoes[equipamento_atual][aluno] += 1
         print(f"Alocando {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
 
@@ -61,7 +65,7 @@ def alocar_tempo(dados):
         alocacoes[equipamento_atual][aluno] -= 1
         print(f"Desfazendo alocação de {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
 
-    if backtrack(0, 0):
+    if backtrack(0, 0): #partida 0 e horario 0, executa o backtracking e ele retorna o bool se conseguiu ou nao
         print("Alocação completada com sucesso.")
         return horarios_alocados
     else:
