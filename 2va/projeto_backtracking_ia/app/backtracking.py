@@ -1,5 +1,6 @@
 import os
 from collections import defaultdict
+import random
 
 def processar_entrada(entrada):
     # divide a entrada por linhas e itera sobre cada linha para extrair os dados de 
@@ -11,7 +12,7 @@ def processar_entrada(entrada):
         alunos = alunos_str.split(';')[:-1]  # ignora o último elemento vazio
         # cria um dicionário para cada equipamento com alunos e suas frequências
         dados[equipamento.strip()] = {aluno.split('=')[0]: int(aluno.split('=')[1]) for aluno in alunos}
-        print(f"Dados processados de {equipamento}: {dados[equipamento.strip()]}")
+        #print(f"Dados processados de {equipamento}: {dados[equipamento.strip()]}")
     return dados
 
 def alocar_tempo(dados):
@@ -29,7 +30,11 @@ def alocar_tempo(dados):
         if horario == 12:  # se todos os horários de um equipamento foram alocados, move para o próximo equipamento
             return backtrack(equipamento + 1, 0)
         
-        for aluno in todos_alunos:
+        
+        alunos_randomicos = list(todos_alunos)
+        random.shuffle(alunos_randomicos)
+        
+        for aluno in alunos_randomicos:
             if pode_alocar(equipamento, horario, aluno):
                 realizar_alocacao(equipamento, horario, aluno)
                 if backtrack(equipamento, horario + 1):
@@ -45,7 +50,7 @@ def alocar_tempo(dados):
             #print("alocacoes: ", alocacoes)
             #print(alocacoes[equipamento_atual][aluno])
             return False
-        for eq, horarios_eq in horarios_alocados.items():
+        for eq, horarios_eq in horarios_alocados.items(): # verifica se o aluno já está alocado naquele específico horario em horarios_eq
             if horarios_eq[horario] == aluno:
                 return False
         return True
@@ -56,14 +61,14 @@ def alocar_tempo(dados):
         horarios_alocados[equipamento_atual][horario] = aluno
         #print("HORARIOS ALOCADOS: ", horarios_alocados)
         alocacoes[equipamento_atual][aluno] += 1
-        print(f"Alocando {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
+        #print(f"Alocando {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
 
     def desfazer_alocacao(equipamento, horario, aluno):
         # desfaz a alocação do aluno no horário especificado e atualiza o contador de alocações
         equipamento_atual = list(dados)[equipamento]
         horarios_alocados[equipamento_atual][horario] = "-"
         alocacoes[equipamento_atual][aluno] -= 1
-        print(f"Desfazendo alocação de {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
+        #print(f"Desfazendo alocação de {aluno} em {equipamento_atual} no horário {horario}. Alocacoes agora: {alocacoes[equipamento_atual][aluno]}")
 
     if backtrack(0, 0): #partida 0 e horario 0, executa o backtracking e ele retorna o bool se conseguiu ou nao
         print("Alocação completada com sucesso.")
@@ -92,8 +97,8 @@ def salvar_saida(saida, nome_arquivo_saida):
 
 def main():
     # lê o dir dos arquivos de entrada, processa os dados(cada .txt), aloca os horários com backtracking, gera e salva as saidas
-    input_directory = '../entrada_1'
-    output_directory = 'saida_1'
+    input_directory = '../entrada_50'
+    output_directory = 'saida'
     os.makedirs(output_directory, exist_ok=True)
 
     for nome_arquivo_entrada in os.listdir(input_directory):
