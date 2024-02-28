@@ -1,113 +1,97 @@
 import os
 import random
+from collections import defaultdict
 
-TAMANHO_POPULACAO = 100
-PROBABILIDADE_MUTACAO = 0.01
-NUMERO_GERACOES = 100
-TAMANHO_TORNEIO = 5
+#codigo descartado por obter taxas de resposta muito baixas. 
+# no final eu e neto discutimos em ligação e em código fomos aprimorando até que obtivessemos uma taxa de accuracy alta, 
+# chegando até 88% de acerto registrado com leitura quase perfeita
 
-# definir funções para gerar um indivíduo,
-# calcular a aptidão de um indivíduo, mutar um gene e processar a entrada e saída.
-def gerar_individuo(equipamentos, alunos):
-    """
-    Gera um indivíduo (solução) para o problema de alocação de equipamentos de academia.
-    Um indivíduo é uma lista de listas, onde cada sublista representa a agenda de um equipamento.
-    Cada sublista contém tuples de (nome do aluno, equipamento), representando uma alocação.
-    
-    :param equipamentos: Lista de equipamentos disponíveis.
-    :param alunos: Dicionário com alunos e o número de vezes que cada um deve utilizar os equipamentos.
-    :return: Um indivíduo representando uma solução para o problema de alocação.
-    """
-    individuo = []
-    for equipamento in equipamentos:
-        agenda = []
-        for aluno, num_usos in alunos.items():
-            for _ in range(num_usos):
-                agenda.append((aluno, equipamento))
-        random.shuffle(agenda) 
-        individuo.append(agenda)
-    return individuo
-
-def calcular_aptidao(individuo):
-    pass
-
-def mutar_gene(gene):
-    pass
+TAMANHO_POPULACAO = 250  
+PROBABILIDADE_MUTACAO = 0.1 
+NUMERO_GERACOES = 300 
 
 def processar_entrada(entrada):
-    pass
+    linhas = entrada.strip().split('\n')
+    dados = {}
+    for linha in linhas:
+        equipamento, alunos_str = linha.split(':')
+        alunos = alunos_str.split(';')[:-1]
+        dados[equipamento.strip()] = {aluno.split('=')[0]: int(aluno.split('=')[1]) for aluno in alunos}
+    return dados
 
-def alocar_tempo(dados, solucao):
-    pass
-
-def gerar_saida(horarios):
-    pass
-
-def salvar_saida(saida, nome_arquivo_saida):
-    pass
-
-def gerar_populacao_inicial():
-    return [gerar_individuo() for _ in range(TAMANHO_POPULACAO)]
-
-def avaliar_aptidao(individuo):
-    return calcular_aptidao(individuo)
-
-def selecionar_pais(populacao):
-    return [torneio(populacao) for _ in range(TAMANHO_POPULACAO)]
-
-def crossover(pai1, pai2):
-    ponto_corte = random.randint(1, len(pai1)-1)
-    filho1 = pai1[:ponto_corte] + pai2[ponto_corte:]
-    filho2 = pai2[:ponto_corte] + pai1[ponto_corte:]
-    return filho1, filho2
-
-def mutacao(individuo):
-    if random.random() < PROBABILIDADE_MUTACAO:
-        ponto_mutacao = random.randint(0, len(individuo)-1)
-        individuo[ponto_mutacao] = mutar_gene(individuo[ponto_mutacao])
+def gerar_individuo(equipamentos, alunos):
+    individuo = []
+    for equipamento in equipamentos:
+        agenda = [(aluno, equipamento) for aluno in alunos for _ in range(alunos[aluno])]
+        random.shuffle(agenda)
+        individuo.append(agenda[:12]) 
     return individuo
 
-def selecionar_sobreviventes(populacao, descendentes):
-    populacao.extend(descendentes)
-    populacao.sort(key=avaliar_aptidao, reverse=True)
-    return populacao[:TAMANHO_POPULACAO]
+def calcular_aptidao(individuo, dados):
+    penalizacao = 0
+    alunos_por_slot = defaultdict(set)
+    for agenda in individuo:
+        for i, (aluno, _) in enumerate(agenda):
+            if aluno in alunos_por_slot[i]:
+                penalizacao += 100
+            alunos_por_slot[i].add(aluno)
+    contagem_alunos = defaultdict(int)
+    for agenda in individuo:
+        for aluno, _ in agenda:
+            contagem_alunos[aluno] += 1
+    for equipamento, alunos in dados.items():
+        for aluno, qtde in alunos.items():
+            penalizacao += abs(contagem_alunos[aluno] - qtde)
+    return 1 / (1 + penalizacao)
 
-def checar_criterio_parada(geracao_atual):
-    return geracao_atual >= NUMERO_GERACOES
+def mutar_gene(individuo):
+    for agenda in individuo:
+        if random.random() < PROBABILIDADE_MUTACAO:
+            i, j = random.sample(range(len(agenda)), 2)
+            agenda[i], agenda[j] = agenda[j], agenda[i]
 
-def torneio(populacao):
-    competidores = random.sample(populacao, TAMANHO_TORNEIO)
-    competidores.sort(key=avaliar_aptidao, reverse=True)
-    return competidores[0]
+def gerar_populacao_inicial(equipamentos, alunos):
+    return [gerar_individuo(equipamentos, alunos) for _ in range(TAMANHO_POPULACAO)]
+
+def selecionar_sobreviventes(populacao, dados, elite_size=2):
+    elite = sorted(populacao, key=lambda x: calcular_aptidao(x, dados), reverse=True)[:elite_size]
+    return elite + sorted(random.sample(populacao, len(populacao) - elite_size), key=lambda x: calcular_aptidao(x, dados), reverse=True)[:TAMANHO_POPULACAO - elite_size]
+
+def evoluir(populacao, dados):
+    nova_populacao = selecionar_sobreviventes(populacao, dados)
+    while len(nova_populacao) < TAMANHO_POPULACAO:
+        pai1, pai2 = random.sample(nova_populacao[:20], 2)  
+        filho = crossover(pai1, pai2)
+        mutar_gene(filho)
+        nova_populacao.append(filho)
+    return nova_populacao
+
+def crossover(pai1, pai2):
+    filho = []
+    for i in range(len(pai1)):
+        if random.random() > 0.5:
+            filho.append(pai1[i])
+        else:
+            filho.append(pai2[i])
+    return filho
+
+def gerar_saida(horarios):
+    saida = []
+    for agenda in horarios:
+        equipamento = agenda[0][1]
+        linha = f"{equipamento}: " + "-".join(aluno for aluno, _ in agenda)
+        saida.append(linha)
+    return "\n".join(saida)
+
+def salvar_saida(saida, nome_arquivo_saida):
+    with open(nome_arquivo_saida, 'w', encoding='UTF-8') as f:
+        f.write(saida)
 
 def main():
     input_directory = '../entrada_50'
-    output_directory = '../saida_50'
+    output_directory = '../saida_ag'
     os.makedirs(output_directory, exist_ok=True)
     
-    # inicialização da população
-    populacao = gerar_populacao_inicial()
-    geracao_atual = 0
-    
-    while not checar_criterio_parada(geracao_atual):
-        aptidoes = [avaliar_aptidao(ind) for ind in populacao]
-        
-        pais = selecionar_pais(populacao)
-        
-        # recombinação e mutação
-        descendentes = []
-        for _ in range(len(populacao) // 2):
-            pai1, pai2 = random.sample(pais, 2)
-            filho1, filho2 = crossover(pai1, pai2)
-            descendentes.append(mutacao(filho1))
-            descendentes.append(mutacao(filho2))
-        
-        populacao = selecionar_sobreviventes(populacao, descendentes)
-        geracao_atual += 1
-    
-    melhor_solucao = populacao[0]
-    
-    # processamento de entradas e saídas com a melhor solução encontrada
     for nome_arquivo_entrada in os.listdir(input_directory):
         if nome_arquivo_entrada.endswith('.txt'):
             caminho_completo_entrada = os.path.join(input_directory, nome_arquivo_entrada)
@@ -117,8 +101,16 @@ def main():
                 entrada = f.read()
 
             dados = processar_entrada(entrada)
-            horarios = alocar_tempo(dados, melhor_solucao)  # modificado para usar a melhor solução
-            saida = gerar_saida(horarios)
+            equipamentos = list(dados.keys())
+            todos_alunos = set(sum([list(alunos.keys()) for alunos in dados.values()], []))
+            alunos = {aluno: sum(dados[equipamento].get(aluno, 0) for equipamento in equipamentos) for aluno in todos_alunos}
+            
+            populacao = gerar_populacao_inicial(equipamentos, alunos)
+            for _ in range(NUMERO_GERACOES):
+                populacao = evoluir(populacao, dados)
+            melhor_solucao = populacao[0]
+            
+            saida = gerar_saida(melhor_solucao)
             salvar_saida(saida, nome_arquivo_saida)
 
             print(f"O arquivo de saída '{nome_arquivo_saida}' foi gerado com sucesso.")
